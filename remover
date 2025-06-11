@@ -1,0 +1,70 @@
+#!/bin/bash
+
+# Color codes
+RED="\e[91m"
+YELLOW="\e[93m"
+GREEN="\e[92m"
+CYAN="\e[96m"
+NC="\e[0m"
+
+# Check if keyword is provided
+if [ -z "$1" ]; then
+    echo -e "${RED}Usage:${NC} remover [filename keyword]"
+    exit 1
+fi
+
+KEYWORD="$1"
+
+echo -e "${YELLOW}⚠️  Warning:${NC} This will recursively search for and delete all files and folders containing the keyword \"${KEYWORD}\" in the current directory."
+
+read -p "Are you absolutely sure you want to proceed with the search? (y/n): " CONFIRM
+if [[ "$CONFIRM" != "y" ]]; then
+    echo -e "${RED}❌ Aborted.${NC} No files were harmed."
+    exit 0
+fi
+
+echo -e "${CYAN}🔍 Scanning for files and folders...${NC}"
+sleep 1
+
+# Find all matching files and directories
+FILES=$(find . -type f -iname "*$KEYWORD*")
+DIRS=$(find . -type d -iname "*$KEYWORD*" | sort -r)
+
+# Display preview
+if [ -z "$FILES" ] && [ -z "$DIRS" ]; then
+    echo -e "${YELLOW}No matching files or folders found.${NC}"
+    exit 0
+fi
+
+echo -e "${GREEN}The following items will be deleted:${NC}"
+echo "$FILES" | while read -r FILE; do
+    [ -n "$FILE" ] && echo -e "${RED}🗑️  File:${NC} $FILE"
+done
+echo "$DIRS" | while read -r DIR; do
+    [ -n "$DIR" ] && echo -e "${RED}📁 Folder:${NC} $DIR"
+done
+
+echo
+read -p "Proceed with deletion? (y/n): " CONFIRM_DELETE
+if [[ "$CONFIRM_DELETE" != "y" ]]; then
+    echo -e "${RED}❌ Deletion canceled.${NC}"
+    exit 0
+fi
+
+# Delete matching files
+echo "$FILES" | while read -r FILE; do
+    if [ -f "$FILE" ]; then
+        rm -f "$FILE"
+        echo -e "${RED}🗑️  Deleted file:${NC} $FILE"
+    fi
+done
+
+# Delete matching directories
+echo "$DIRS" | while read -r DIR; do
+    if [ -d "$DIR" ]; then
+        rm -rf "$DIR"
+        echo -e "${RED}📁 Deleted folder:${NC} $DIR"
+    fi
+done
+
+echo -e "${GREEN}✅ Deletion complete.${NC}"
