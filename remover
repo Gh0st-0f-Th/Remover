@@ -1,57 +1,70 @@
 #!/bin/bash
 
-# remover - delete all files/folders containing a keyword, but with armor.
+# Color codes
+RED="\e[91m"
+YELLOW="\e[93m"
+GREEN="\e[92m"
+CYAN="\e[96m"
+NC="\e[0m"
+
+# Check if keyword is provided
+if [ -z "$1" ]; then
+    echo -e "${RED}Usage:${NC} remover [filename keyword]"
+    exit 1
+fi
+
 KEYWORD="$1"
 
-# Protected paths to avoid accidental self-destruction
-PROTECTED_PATHS=("$PREFIX/bin" "$HOME/bin" "/usr/bin" "/bin" "/sbin")
+echo -e "${YELLOW}⚠️  Warning:${NC} This will recursively search for and delete all files and folders containing the keyword \"${KEYWORD}\" in the current directory."
 
-# Emoji flair because why not
-WARNING="⚠️"
-DELETED="🗑️"
-SKIPPED="🛡️"
-SUCCESS="✅"
-SEARCHING="🔍"
-
-# Safety check
-if [[ -z "$KEYWORD" ]]; then
-  echo "$WARNING  Usage: remover [filename keyword]"
-  exit 1
+read -p "Are you absolutely sure you want to proceed with the search? (y/n): " CONFIRM
+if [[ "$CONFIRM" != "y" ]]; then
+    echo -e "${RED}❌ Aborted.${NC} No files were harmed."
+    exit 0
 fi
 
-echo "$WARNING  This will recursively search for and delete all files and folders containing the keyword \"$KEYWORD\" from the current directory."
-read -p "Are you absolutely sure you want to proceed with the search? (y/n): " confirm
-if [[ "$confirm" != "y" ]]; then
-  echo "Aborted. No files were harmed today. 🐱‍👤"
-  exit 1
+echo -e "${CYAN}🔍 Scanning for files and folders...${NC}"
+sleep 1
+
+# Find all matching files and directories
+FILES=$(find . -type f -iname "*$KEYWORD*")
+DIRS=$(find . -type d -iname "*$KEYWORD*" | sort -r)
+
+# Display preview
+if [ -z "$FILES" ] && [ -z "$DIRS" ]; then
+    echo -e "${YELLOW}No matching files or folders found.${NC}"
+    exit 0
 fi
 
-echo "$SEARCHING Scanning for files and folders matching: \"$KEYWORD\""
-MATCHES=()
-while IFS= read -r file; do
-  MATCHES+=("$file")
-done < <(find . -iwholename "*$KEYWORD*" 2>/dev/null)
-
-if [[ ${#MATCHES[@]} -eq 0 ]]; then
-  echo "No matching files or folders found."
-  exit 0
-fi
-
-for file in "${MATCHES[@]}"; do
-  skip=0
-  for protected in "${PROTECTED_PATHS[@]}"; do
-    if [[ "$file" == "$protected"* ]]; then
-      echo "$SKIPPED Skipping protected file: $file"
-      skip=1
-      break
-    fi
-  done
-
-  if [[ $skip -eq 0 ]]; then
-    rm -rf "$file"
-    echo "$DELETED Deleted: $file"
-  fi
+echo -e "${GREEN}The following items will be deleted:${NC}"
+echo "$FILES" | while read -r FILE; do
+    [ -n "$FILE" ] && echo -e "${RED}🗑️  File:${NC} $FILE"
+done
+echo "$DIRS" | while read -r DIR; do
+    [ -n "$DIR" ] && echo -e "${RED}📁 Folder:${NC} $DIR"
 done
 
 echo
-echo "$SUCCESS Deletion complete. Protected files untouched like your last relationship. 🧠"
+read -p "Proceed with deletion? (y/n): " CONFIRM_DELETE
+if [[ "$CONFIRM_DELETE" != "y" ]]; then
+    echo -e "${RED}❌ Deletion canceled.${NC}"
+    exit 0
+fi
+
+# Delete matching files
+echo "$FILES" | while read -r FILE; do
+    if [ -f "$FILE" ]; then
+        rm -f "$FILE"
+        echo -e "${RED}🗑️  Deleted file:${NC} $FILE"
+    fi
+done
+
+# Delete matching directories
+echo "$DIRS" | while read -r DIR; do
+    if [ -d "$DIR" ]; then
+        rm -rf "$DIR"
+        echo -e "${RED}📁 Deleted folder:${NC} $DIR"
+    fi
+done
+
+echo -e "${GREEN}✅ Deletion complete.${NC}"
